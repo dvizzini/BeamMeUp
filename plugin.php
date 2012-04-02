@@ -89,17 +89,25 @@ function beam_post_to_ia($item)
 	
 	//@TODO: Get progress bar (only supported in php 5.3)
 	
-	/*
-	//@TODO: deal with jQuery bool
-	if(isset($_POST['postToInternetArchiveBool']) && $_POST['postToInternetArchiveBool'] == 'Yes') {
-		confirmUpload();
-	}
-	*/
+	//@TODO: add per-item jQuery bool
 	
 	echo get_option('post_to_internet_archive_bool');
 	
 	if(get_option('post_to_internet_archive_bool') == 'Yes') {
 		
+        $jobDispatcher = Zend_Registry::get('job_dispatcher');
+        $jobDispatcher->setQueueName('uploads');
+        $jobDispatcher->send('IAUpload_Job');		
+		
+	}
+		
+}
+
+class IAUpload_Job extends Omeka_JobAbstract
+{
+
+    public function perform()
+    {
 		//add a url to the handler, $filetype = 0 for file, 1 for metadata
 		function addHandle(&$curlHandle,$fileToBePut,$first,$fileType)
 		{
@@ -179,6 +187,7 @@ function beam_post_to_ia($item)
 		
 		//metadata
 		//see http://stackoverflow.com/questions/3958226/using-put-method-with-php-curl-library
+		/*
 		foreach ($actionContexts as $key => $actionContext) {
             $query = $_GET;
             $query['output'] = $actionContext;
@@ -190,6 +199,7 @@ function beam_post_to_ia($item)
 			}
 			$i++;
         }
+		*/
 		
 		
 		ExecHandle($curlHandle);
@@ -231,8 +241,9 @@ function beam_post_to_ia($item)
 			alert("You can view the your Internet Archive bucket at http://archive.org/details/"<?php echo get_option('bucket_prefix').'_'.item('id') ?>);
 		</script>
 		*/			
-	}
-		
+    	
+    }
+
 }
 
 function beam_form($item) {
