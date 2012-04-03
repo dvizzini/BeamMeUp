@@ -289,7 +289,7 @@ function getBucketName()
 function listInternetArchiveLinks()
 {
 	return "
-		<div>If you uploaded the files and the Internet Archive has full processed them, you can view them <b><a href=http://archive.org/details/".getBucketName()." target=\"_blank\">here</a></b>.</div>
+		<div>If you uploaded the files and the Internet Archive has fully processed them, you can view them <b><a href=http://archive.org/details/".getBucketName()." target=\"_blank\">here</a></b>.</div>
 		</br>
 		<div>You can view the upload's Internet Archive history and progress <b><a href=http://archive.org/catalog.php?history=1&identifier=".getBucketName()." target=\"_blank\">here</a></b>.</div>
 		</br>
