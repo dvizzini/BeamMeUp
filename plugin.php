@@ -2,7 +2,7 @@
 define('BEAMMEUP_PLUGIN_VERSION', '0.1');
 
 #@TODO: Add MVC implementation
-#@TODO: Experiment with first uploads being big and small
+#@TODO: Check out array-to-XML parsers
 #@TODO: Check OAIPMH harverster plugin for code that loads status to db , see indexcontroller.php #jobdispatcher to get onto other thread 
 #@TODO: Look at paths.php for better way to get file path
 #@TODO: make jQuery in config_form.php work 
@@ -16,6 +16,9 @@ add_plugin_hook('admin_append_to_items_form_files', 'beam_admin_append_to_items_
 add_plugin_hook('after_save_item', 'beam_post_to_ia');
 add_plugin_hook('admin_append_to_items_show_secondary', 'beam_admin_append_to_items_show_secondary');
 add_filter('admin_items_form_tabs', 'beam_item_form_tabs');
+
+//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
+$DEBUG = TRUE;
 
 // Hook Functions
 
@@ -102,7 +105,7 @@ function beam_item_form_tabs($tabs)
 }
 
 /**
- * Each time an item is saved, post to the Internet Archive 
+ * Post Files and metadata of an Omeka Item to the Internet Archive 
  * @return void
  **/    
 function beam_post_to_ia($item)
@@ -110,6 +113,10 @@ function beam_post_to_ia($item)
 	
 	if($_POST["PostToInternetArchiveBool"] == 'Yes') {
 		
+		/**
+		 * @param $first true if this is the first PUT to the bucket, false otherwise 
+		 * @return A cURL object with options set that are common to all calls
+		 */
 		function getInitializedCurlObject($first)
 		{
 			
@@ -136,42 +143,14 @@ function beam_post_to_ia($item)
 			return $cURL;
 			
 		}
-		
+
 		/**
-		 * Adds handle for Omeka metadata to curl object 
-		 * @return void
-		 **/    		
-		function addFileHandle(&$curlHandle,$fileToBePut,$first)
+		 * @param $first true if this is the first PUT to the bucket, false otherwise 
+		 * @return A cURL object with parameters set to upload metadata
+		 */		 
+		function getMetadataCurlObject($first)
 		{
-			
-			$cURL = getInitializedCurlObject($first);
-	
-			// open this directory
-			set_current_file($fileToBePut);
 
-			echo './../archive/files/'.item_file('archive filename');
-
-			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.str_replace(' ','_',item_file('original filename')));
-			curl_setopt($cURL, CURLOPT_INFILE,  fopen('./../archive/files/'.item_file('archive filename'),'r'));
-			echo item_file('Size');
-			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
-
-			curl_multi_add_handle($curlHandle,$cURL);
-			
-			//curl_exec($cURL);
-			//print_r(curl_getinfo($cURL));
-			
-			return $cURL;
-
-		}
-		
-		/**
-		 * Adds handle for Omeka metadata to curl object 
-		 * @param $curlHandle pointer to multi culr handle that will be added to
-		 * @return void
-		 **/    		
-		function addMetadataHandle(&$curlHandle,$first)
-		{
 			$cURL = getInitializedCurlObject($first);
 			
 			$body = show_item_metadata($options = array('show_empty_elements' => TRUE, ), $item = $item);
@@ -192,25 +171,87 @@ function beam_post_to_ia($item)
 			curl_setopt($cURL, CURLOPT_INFILE, $fp); // file pointer
 			curl_setopt($cURL, CURLOPT_INFILESIZE, strlen($body)); 
 
-			curl_multi_add_handle($curlHandle,$cURL);
+			curl_multi_add_handle($curlMultiHandle,$cURL);
+			return $cURL;
+			
+		}
+		
+		/**
+		 * Adds handle for Omeka File to cURL multi object 
+		 * @param $first true if this is the first PUT to the bucket, false otherwise 
+		 * @return A cURL object with parameters set to upload a file
+		 */		 
+		function getFileCurlObject(File $fileToBePut, $first)
+		{
+
+			$cURL = getInitializedCurlObject($first);
+
+			// open this directory
+			set_current_file($fileToBePut);
+
+			echo './../archive/files/'.item_file('archive filename');
+
+			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.str_replace(' ','_',item_file('original filename')));
+			curl_setopt($cURL, CURLOPT_INFILE,  fopen('./../archive/files/'.item_file('archive filename'),'r'));
+			echo item_file('Size');
+			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
+	
+			curl_multi_add_handle($curlMultiHandle,$cURL);			
+			return $cURL;
+			
+		}
+		
+		/**
+		 * Adds handle for Omeka metadata to cURL multi object 
+		 * @param $curlMultiHandle pointer to multi cURL multi handle that will be added to
+		 * @param $cURL single cURL handle to add 
+		 * @return void
+		 **/    		
+		function addHandle(&$curlMultiHandle,$cURL)
+		{
+
+			curl_multi_add_handle($curlMultiHandle,$cURL);
 			return $cURL;
 
 		}
-	
-					
-		//execute the handle until the flag passed
-		// to function is greater then 0
-		function ExecHandle(&$curlHandle)
+				
+		/**
+		 * Executes PUT method to upload Omeka metadata 
+		 * @param $successful pointer to success flag. Will be set to FALSE if HTTP code is not 200
+		 * @param $cURL single cURL handle to execute 
+		 * @return void
+		 **/    		
+		function execHandle(&$successful,$cURL)
+		{
+			
+			$cURL = getMetadataCurlObject(FALSE);
+			
+			curl_exec($cURL);
+			
+			if (curl_getinfo($cURL,CURLINFO_HTTP_CODE) != 200)
+			{
+				$successful = FALSE;
+			}
+
+			echo 'HTTP Code: '.curl_getinfo($cURL,CURLINFO_HTTP_CODE);
+
+		}
+
+		/**
+		 * Executes the cURL multi handle until there are no outstanding jobs 
+		 * @return void
+		 **/    		
+		function ExecHandle(&$curlMultiHandle)
 		{
 			$flag=null;
 			do {
 			echo $flag;
 			$flagLast = $flag;
 			//fetch pages in parallel
-			curl_multi_exec($curlHandle,$flag);
+			curl_multi_exec($curlMultiHandle,$flag);
 			if ($flagLast != $flag)
 			{
-				echo curl_getinfo($curlHandle);
+				echo curl_getinfo($curlMultiHandle);
 			}
 			} while ($flag > 0);			
 			
@@ -218,49 +259,53 @@ function beam_post_to_ia($item)
 
 		//set function-level variables
 		set_current_item($item);
-	    $actionContexts = current_action_contexts();//for metadata
-	    print_r($actionContexts);
-		$curlHandle = curl_multi_init();
-
-		//$curl[0] = addMetadataHandle($curlHandle,TRUE);
-
-		$i = 0;
-		while(loop_files_for_item())
-		{
-			if ($i == 0)
-			{
-				$curl[$i] = addFileHandle($curlHandle,get_current_file(),TRUE);			
-			}
-			else 
-			{
-				$curl[$i] = addFileHandle($curlHandle,get_current_file(),FALSE);							
-			}
-			$i++;
-		}
 		
-		if ($i == 0)
+		if ($DEBUG)
 		{
-			$curl[$i] = addMetadataHandle($curlHandle,TRUE);
+		    $actionContexts = current_action_contexts();//for metadata
+		    echo '$actionContents: ';
+		    print_r($actionContexts);
+					
+			$successful = TRUE;//innocent until proven guilty
+
+			execMetadataHandle($successful);
+
+			while(loop_files_for_item())
+			{
+				execFileHandle($successful,get_current_file());			
+			}
+
+			echo 'Very important: ';
+			echo (($successful) ? 'success' : 'failure');			
+
+			//throws uncaught error for debugging
+			file_download_uri($whatever);
+
 		}
 		else
 		{
-			$curl[$i] = addMetadataHandle($curlHandle,FALSE);			
-		}
-		
-		ExecHandle($curlHandle);
-		
-		echo count($curl);//works		
-		
-		for ($i = 0;$i < count($curl); $i++)//remove the handles
-		{
-			curl_multi_remove_handle($curlHandle,$curl[$i]);
-		}
-		
-		curl_multi_close($curlHandle);
-		
-		//throws uncaught error for debugging
-		//file_download_uri($whatever);
 
+			$curlMultiHandle = curl_multi_init();
+			
+			$curl[0] = execMetadataHandle($successful);
+			
+			$i = 1;
+			while(loop_files_for_item())
+			{
+				$curl[$i] = execFileHandle($successful,get_current_file());			
+			}		
+					
+			ExecHandle($curlMultiHandle);
+			
+			for ($i = 0;$i < count($curl); $i++)//remove the handles
+			{
+				curl_multi_remove_handle($curlMultiHandle,$curl[$i]);
+			}
+			
+			curl_multi_close($curlMultiHandle);
+			
+		}
+				
 	}
 		
 }
@@ -305,12 +350,17 @@ function beam_form($item) {
 }
 
 //helpers
-//return bucket name
+/**
+ * @return bucket name for Omeka Item
+ */
 function getBucketName()
 {
 	return get_option('bucket_prefix').'_'.item('id');
 }
 
+/**
+ * @return string containing IA links
+ */
 function listInternetArchiveLinks()
 {
 	return "
