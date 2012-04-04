@@ -2,6 +2,7 @@
 define('BEAMMEUP_PLUGIN_VERSION', '0.1');
 
 #@TODO: Add MVC implementation
+#@TODO: Experiment with first uploads being big and small
 #@TODO: Check OAIPMH harverster plugin for code that loads status to db , see indexcontroller.php #jobdispatcher to get onto other thread 
 #@TODO: Look at paths.php for better way to get file path
 #@TODO: make jQuery in config_form.php work 
@@ -121,7 +122,7 @@ function beam_post_to_ia($item)
 			} else {
 				echo 'in false';
 				print_r(array('authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
-				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('x-amz-auto-make-bucket:1','authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));					
+				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));					
 			}
 	
 			curl_setopt($cURL, CURLOPT_HEADER, 1);
@@ -221,6 +222,8 @@ function beam_post_to_ia($item)
 	    print_r($actionContexts);
 		$curlHandle = curl_multi_init();
 
+		//$curl[0] = addMetadataHandle($curlHandle,TRUE);
+
 		$i = 0;
 		while(loop_files_for_item())
 		{
@@ -235,7 +238,6 @@ function beam_post_to_ia($item)
 			$i++;
 		}
 		
-		//should go last or else sometimes files do not get uploaded
 		if ($i == 0)
 		{
 			$curl[$i] = addMetadataHandle($curlHandle,TRUE);
