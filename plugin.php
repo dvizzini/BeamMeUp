@@ -2,11 +2,11 @@
 define('BEAMMEUP_PLUGIN_VERSION', '0.1');
 
 #@TODO: Add MVC implementation
+#@TODO: Experiment with first uploads being big and small
 #@TODO: Check OAIPMH harverster plugin for code that loads status to db , see indexcontroller.php #jobdispatcher to get onto other thread 
 #@TODO: Look at paths.php for better way to get file path
 #@TODO: make jQuery in config_form.php work 
 #@TODO: bind jQuery to "Add Item" and "Save Changes" buttons to confirm upload 
-#@TODO: Get progress bar (only supported in php 5.3?)	
 	
 // Plugin Hooks
 add_plugin_hook('install', 'beam_install');
@@ -149,14 +149,18 @@ function beam_post_to_ia($item)
 			// open this directory
 			set_current_file($fileToBePut);
 
-			//echo './../archive/files/'.item_file('archive filename');
+			echo './../archive/files/'.item_file('archive filename');
 
-			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.item_file('original filename'));
+			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.str_replace(' ','_',item_file('original filename')));
 			curl_setopt($cURL, CURLOPT_INFILE,  fopen('./../archive/files/'.item_file('archive filename'),'r'));
 			echo item_file('Size');
 			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
 
 			curl_multi_add_handle($curlHandle,$cURL);
+			
+			//curl_exec($cURL);
+			//print_r(curl_getinfo($cURL));
+			
 			return $cURL;
 
 		}
@@ -201,8 +205,13 @@ function beam_post_to_ia($item)
 			$flag=null;
 			do {
 			echo $flag;
+			$flagLast = $flag;
 			//fetch pages in parallel
 			curl_multi_exec($curlHandle,$flag);
+			if ($flagLast != $flag)
+			{
+				echo curl_getinfo($curlHandle);
+			}
 			} while ($flag > 0);			
 			
 		}
@@ -210,16 +219,32 @@ function beam_post_to_ia($item)
 		//set function-level variables
 		set_current_item($item);
 	    $actionContexts = current_action_contexts();//for metadata
+	    print_r($actionContexts);
 		$curlHandle = curl_multi_init();
-		echo $_SERVER["SERVER_NAME"];
 
-		$curl[0] = addMetadataHandle($curlHandle,TRUE);
-		
-		$i = 1;
+		//$curl[0] = addMetadataHandle($curlHandle,TRUE);
+
+		$i = 0;
 		while(loop_files_for_item())
 		{
-			$curl[$i] = addFileHandle($curlHandle,get_current_file(),FALSE);			
+			if ($i == 0)
+			{
+				$curl[$i] = addFileHandle($curlHandle,get_current_file(),TRUE);			
+			}
+			else 
+			{
+				$curl[$i] = addFileHandle($curlHandle,get_current_file(),FALSE);							
+			}
 			$i++;
+		}
+		
+		if ($i == 0)
+		{
+			$curl[$i] = addMetadataHandle($curlHandle,TRUE);
+		}
+		else
+		{
+			$curl[$i] = addMetadataHandle($curlHandle,FALSE);			
 		}
 		
 		ExecHandle($curlHandle);
