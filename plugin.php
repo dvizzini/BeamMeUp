@@ -17,9 +17,6 @@ add_plugin_hook('after_save_item', 'beam_post_to_ia');
 add_plugin_hook('admin_append_to_items_show_secondary', 'beam_admin_append_to_items_show_secondary');
 add_filter('admin_items_form_tabs', 'beam_item_form_tabs');
 
-//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
-$DEBUG = TRUE;
-
 // Hook Functions
 
 /**
@@ -111,6 +108,9 @@ function beam_item_form_tabs($tabs)
 function beam_post_to_ia($item)
 {
 	
+	//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
+	$DEBUG = TRUE;
+
 	if($_POST["PostToInternetArchiveBool"] == 'Yes') {
 		
 		/**
@@ -128,7 +128,6 @@ function beam_post_to_ia($item)
 				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('x-amz-auto-make-bucket:1','authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
 			} else {
 				echo 'in false';
-				print_r(array('authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
 				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));					
 			}
 	
@@ -171,17 +170,16 @@ function beam_post_to_ia($item)
 			curl_setopt($cURL, CURLOPT_INFILE, $fp); // file pointer
 			curl_setopt($cURL, CURLOPT_INFILESIZE, strlen($body)); 
 
-			curl_multi_add_handle($curlMultiHandle,$cURL);
 			return $cURL;
 			
 		}
 		
 		/**
-		 * Adds handle for Omeka File to cURL multi object 
 		 * @param $first true if this is the first PUT to the bucket, false otherwise 
-		 * @return A cURL object with parameters set to upload a file
+		 * @param $fileToBePut the Omeka file to by uploaded to the Internet Archive 
+		 * @return A cURL object with parameters set to upload an Omeka File
 		 */		 
-		function getFileCurlObject(File $fileToBePut, $first)
+		function getFileCurlObject($fileToBePut, $first)
 		{
 
 			$cURL = getInitializedCurlObject($first);
@@ -196,7 +194,6 @@ function beam_post_to_ia($item)
 			echo item_file('Size');
 			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
 	
-			curl_multi_add_handle($curlMultiHandle,$cURL);			
 			return $cURL;
 			
 		}
@@ -221,10 +218,8 @@ function beam_post_to_ia($item)
 		 * @param $cURL single cURL handle to execute 
 		 * @return void
 		 **/    		
-		function execHandle(&$successful,$cURL)
+		function execSingleHandle(&$successful,$cURL)
 		{
-			
-			$cURL = getMetadataCurlObject(FALSE);
 			
 			curl_exec($cURL);
 			
@@ -233,7 +228,7 @@ function beam_post_to_ia($item)
 				$successful = FALSE;
 			}
 
-			echo 'HTTP Code: '.curl_getinfo($cURL,CURLINFO_HTTP_CODE);
+			print_r(curl_getinfo($cURL));
 
 		}
 
@@ -241,7 +236,7 @@ function beam_post_to_ia($item)
 		 * Executes the cURL multi handle until there are no outstanding jobs 
 		 * @return void
 		 **/    		
-		function ExecHandle(&$curlMultiHandle)
+		function execMultiHandle(&$curlMultiHandle)
 		{
 			$flag=null;
 			do {
@@ -268,11 +263,11 @@ function beam_post_to_ia($item)
 					
 			$successful = TRUE;//innocent until proven guilty
 
-			execMetadataHandle($successful);
+			execSingleHandle($successful, getMetadataCurlObject(TRUE));
 
 			while(loop_files_for_item())
 			{
-				execFileHandle($successful,get_current_file());			
+				execSingleHandle($successful, getFileCurlObject(get_current_file(),FALSE));
 			}
 
 			echo 'Very important: ';
@@ -287,15 +282,15 @@ function beam_post_to_ia($item)
 
 			$curlMultiHandle = curl_multi_init();
 			
-			$curl[0] = execMetadataHandle($successful);
+			$curl[0] = addHandle($curlMultiHandle, getMetadataCurlObject(TRUE));
 			
 			$i = 1;
 			while(loop_files_for_item())
 			{
-				$curl[$i] = execFileHandle($successful,get_current_file());			
+				$curl[$i] = addHandle($successful,getFileCurlObject(get_current_file(),FALSE));
 			}		
 					
-			ExecHandle($curlMultiHandle);
+			execMultiHandle($curlMultiHandle);
 			
 			for ($i = 0;$i < count($curl); $i++)//remove the handles
 			{
