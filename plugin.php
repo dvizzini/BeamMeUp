@@ -8,16 +8,24 @@ define('BEAMMEUP_PLUGIN_VERSION', '0.1');
 #@TODO: make jQuery in config_form.php work 
 #@TODO: bind jQuery to "Add Item" and "Save Changes" buttons to confirm upload 
 	
-// Plugin Hooks
+/** Plugin hooks */
 add_plugin_hook('install', 'beam_install');
+add_plugin_hook('uninstall', 'beam_uninstall');
 add_plugin_hook('config_form', 'beam_config_form');
 add_plugin_hook('config', 'beam_config');
 add_plugin_hook('admin_append_to_items_form_files', 'beam_admin_append_to_items_form_files');
-add_plugin_hook('after_save_item', 'beam_post_to_ia');
+add_plugin_hook('after_save_item', 'beam_after_save_item');//the big one
 add_plugin_hook('admin_append_to_items_show_secondary', 'beam_admin_append_to_items_show_secondary');
+add_plugin_hook('admin_theme_header', 'beam_admin_theme_header');
+
+/** Plugin filters */
 add_filter('admin_items_form_tabs', 'beam_item_form_tabs');
 
 // Hook Functions
+
+function beam_admin_theme_header() {
+	
+}
 
 /**
  * Displays Internet Archive links in admin/show section 
@@ -32,15 +40,39 @@ function beam_admin_append_to_items_show_secondary() {
 }
 
 /**
+ * admin_navigation_main filter.
+ * 
+ * @param array $nav Array of main navigation tabs.
+ * @return array Filtered array of main navigation tabs.
+ */
+/*
+function beam_harvester_admin_navigation_main($nav)
+{
+    if (has_permission('BeamMeUp_Index', 'index')) {
+        $nav['BeamMeUp'] = uri('beam_me_up');
+    }
+    return $nav;
+}
+*/
+
+/**
  * Gives user the option to post to the Internet Archive 
  * @return void
  **/    
 function beam_admin_append_to_items_form_files() {
+
 	?>
+
 	<span><b>Upload to Internet Archive</b></span>
 	<input type="checkbox" name="PostToInternetArchiveBool" value="Yes" <?php if(get_option('post_to_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
 	<div><em>Note that if this box is checked, saving the item may take a while.</em></div>
 	<div><em>Files must be uniquely named to post to the archive.</em></div>
+	</br>
+	</br>
+	<span><b>Index at Internet Archive</b></span>
+	<input type="checkbox" name="IndexAtInternetArchiveBool" value="Yes" <?php if(get_option('index_at_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+	<div><em>If you index your item, it will appear on the results of search engines such as Google's.</em></div>
+
 	<?php
 }
 
@@ -50,15 +82,48 @@ function beam_admin_append_to_items_form_files() {
  **/    
 function beam_install()
 {
+	
 	set_option('post_to_internet_archive_default_bool', 'Yes');
+	set_option('index_at_internet_archive_default_bool', 'Yes');
 	set_option('access_key', 'Enter&nbsp;S3&nbsp;access&nbsp;key&nbsp;here.');
 	set_option('secret_key', 'Enter&nbsp;S3&nbsp;secret&nbsp;key&nbsp;here.');
-
+	set_option('collection_name', 'Please&nbsp;contact&nbsp;the&nbsp;Internet&nbsp;Archive.');
+	set_option('media_type', 'Please&nbsp;contact&nbsp;the&nbsp;Internet&nbsp;Archive.');
+	
 	$bucketPrefix = str_replace('.','_',preg_replace('/www/', '', $_SERVER["SERVER_NAME"],1));
 	$bucketPrefix = 'omeka'.((strpos($bucketPrefix,'_') == 0) ? '' : '_').$bucketPrefix;
 	set_option('bucket_prefix', $bucketPrefix);
+
+/*
+    $db = get_db();
+    $sql = "
+    CREATE TABLE IF NOT EXISTS $db->CC (
+    `item_id` BIGINT UNSIGNED NOT NULL ,
+    `up_to_date` BOOLEAN NOT NULL ,
+    `bucket_url` TEXT ,
+    `bucket_history_url` TEXT ,
+    INDEX (`item_id`)) ENGINE = MYISAM";
+    $db->query($sql);
+*/
+
 }
 
+/**
+ * Deletes persistent variables 
+ * @return void
+ **/    
+function beam_uninstall()
+{
+	
+	delete_option('post_to_internet_archive_default_bool');
+	delete_option('index_at_internet_archive_default_bool');
+	delete_option('collection_name');
+	delete_option('media_type');
+	delete_option('access_key');
+	delete_option('secret_key');
+	delete_option('bucket_prefix');
+	
+}
 /**
  * Displays configuration form 
  * @return void
@@ -74,10 +139,14 @@ function beam_config_form()
  **/    
 function beam_config()
 {
+
 	set_option('post_to_internet_archive_default_bool', $_POST['PostToInternetArchiveDefaultBool']);
+	set_option('index_at_internet_archive_default_bool', $_POST['IndexAtInternetArchiveDefaultBool']);
+	set_option('collection_name', $_POST['CollectionName']);
+	set_option('media_type', $_POST['MediaType']);
 	set_option('access_key', $_POST['AWSAccessKeyId']);
 	set_option('secret_key', $_POST['SecretKey']);
-	set_option('bucket_prefix', $_POST['BucketPrefix']);
+	
 }
 
 /**
@@ -105,39 +174,51 @@ function beam_item_form_tabs($tabs)
  * Post Files and metadata of an Omeka Item to the Internet Archive 
  * @return void
  **/    
-function beam_post_to_ia($item)
+function beam_after_save_item($item)
 {
 	
 	//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
 	$DEBUG = TRUE;
 
 	if($_POST["PostToInternetArchiveBool"] == 'Yes') {
-		
-		/**
-		 * @param $first true if this is the first PUT to the bucket, false otherwise 
-		 * @return A cURL object with options set that are common to all calls
-		 */
-		function getInitializedCurlObject($first)
+				
+				
+		function getInitializedCurlObject($first,$title)
 		{
 			
 			$cURL = curl_init();
-				
-			if ($first) {
-				echo 'in true';
-				print_r(array('x-amz-auto-make-bucket:1','authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
-				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('x-amz-auto-make-bucket:1','authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
-			} else {
-				echo 'in false';
-				curl_setopt($cURL, CURLOPT_HTTPHEADER, array('authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));					
-			}
 	
 			curl_setopt($cURL, CURLOPT_HEADER, 1);
-	        curl_setopt($cURL, CURLOPT_CONNECTTIMEOUT, 30);
-	        curl_setopt($cURL, CURLOPT_LOW_SPEED_LIMIT, 1);
-	        curl_setopt($cURL, CURLOPT_LOW_SPEED_TIME, 180);
-	        curl_setopt($cURL, CURLOPT_NOSIGNAL, 1);
+		    curl_setopt($cURL, CURLOPT_CONNECTTIMEOUT, 30);
+		    curl_setopt($cURL, CURLOPT_LOW_SPEED_LIMIT, 1);
+		    curl_setopt($cURL, CURLOPT_LOW_SPEED_TIME, 180);
+		    curl_setopt($cURL, CURLOPT_NOSIGNAL, 1);
 			curl_setopt($cURL, CURLOPT_PUT, 1);
 			curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);				
+	
+			//note that curl_setopt does not seem to work with predefined arrays, which is a real deterent to good code
+			//TODO: test with predefined arrays
+			if ($first) {
+				curl_setopt($cURL, CURLOPT_HTTPHEADER, 
+					array('x-amz-auto-make-bucket:1',
+						//TODO: which works?
+						'x-archive-metadata-collection:'.get_option('collection_name'),
+						'x-archive-meta-noindex:'.get_option('collection_name'),
+						'x-archive-meta-mediatype:'.get_option('media_type'),
+						'x-archive-meta-title:'.$title,
+						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == 'Yes') ? '0' : '1'),
+						'x-archive-meta-creator:'.preg_replace('/www/', '', $_SERVER["SERVER_NAME"],1),
+						'authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
+			} else {
+				curl_setopt($cURL, CURLOPT_HTTPHEADER, array(
+						//TODO: which works?
+						'x-archive-meta-collection:'.get_option('collection_name'),
+						'x-archive-meta-mediatype:'.get_option('media_type'),
+						'x-archive-meta-title:'.$title,
+						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == 'Yes') ? '0' : '1'),
+						'x-archive-meta-creator:'.preg_replace('/www/', '', $_SERVER["SERVER_NAME"],1),
+						'authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
+			}
 			
 			return $cURL;
 			
@@ -149,14 +230,45 @@ function beam_post_to_ia($item)
 		 */		 
 		function getMetadataCurlObject($first)
 		{
-
-			$cURL = getInitializedCurlObject($first);
 			
-			$body = show_item_metadata($options = array('show_empty_elements' => TRUE, ), $item = $item);
+			/*
+			// function defination to convert array to xml
+			function array_to_xml($body, &$xml_body) {
+			    foreach($body as $key => $value) {
+			        if(is_array($value)) {
+			            if(!is_numeric($key)){
+			                $subnode = $xml_body->addChild("$key");
+			                array_to_xml($value, $subnode);
+			            }
+			            else{
+			                array_to_xml($value, $xml_body);
+			            }
+			        }
+			        else {
+			            $xml_body->addChild("$key","$value");
+			        }
+			    }
+			}
 			
-			echo strlen($body);
+			$body = show_item_metadata($options = array('show_empty_elements' => TRUE, 'return_type' => 'array'), $item = $item);
+			print_r($body);
+			
+			//God bless Stack Overflow: http://stackoverflow.com/questions/1397036/how-to-convert-array-to-simplexml
+			
+			// creating object of SimpleXMLElement
+			$xml_body = new SimpleXMLElement("<?xml version=\"1.0\"?><item></item>");
+			echo 'Intial body: '.$xml_body;
+			// function call to convert array to xml
+			array_to_xml($body,$xml_body);
+			echo $xml_body;			
+			*/
+			
+			$cURL = getInitializedCurlObject($first,'Item Metadata');
+			$body = show_item_metadata($options = array('show_empty_elements' => TRUE), $item = $item);
+								
+			echo 'about to show_item_metadata: ';
 			echo $body;
-			
+
 			/** use a max of 256KB of RAM before going to disk */
 			$fp = fopen('php://temp/maxmemory:256000', 'w');
 			if (!$fp) {
@@ -179,30 +291,30 @@ function beam_post_to_ia($item)
 		 * @param $fileToBePut the Omeka file to by uploaded to the Internet Archive 
 		 * @return A cURL object with parameters set to upload an Omeka File
 		 */		 
-		function getFileCurlObject($fileToBePut, $first)
+		function getFileCurlObject($first, File $fileToBePut)
 		{
 
-			$cURL = getInitializedCurlObject($first);
+			$cURL = getInitializedCurlObject($first,item_file('original filename'));
 
 			// open this directory
 			set_current_file($fileToBePut);
-
-			echo './../archive/files/'.item_file('archive filename');
-
-			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.str_replace(' ','_',item_file('original filename')));
+			echo item_file('original filename');
+			echo preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',item_file('original filename')),ENT_QUOTES));
+			
+			//TODO Test with hyphen, apostraphe
+			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',item_file('original filename')),ENT_QUOTES)));
 			curl_setopt($cURL, CURLOPT_INFILE,  fopen('./../archive/files/'.item_file('archive filename'),'r'));
-			echo item_file('Size');
 			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
-	
+
 			return $cURL;
 			
 		}
 		
 		/**
-		 * Adds handle for Omeka metadata to cURL multi object 
+		 * Adds handle for to cURL multi object 
 		 * @param $curlMultiHandle pointer to multi cURL multi handle that will be added to
 		 * @param $cURL single cURL handle to add 
-		 * @return void
+		 * @return the $cURL object for curl_multi_remove_handle
 		 **/    		
 		function addHandle(&$curlMultiHandle,$cURL)
 		{
@@ -240,34 +352,35 @@ function beam_post_to_ia($item)
 		{
 			$flag=null;
 			do {
-			echo $flag;
-			$flagLast = $flag;
 			//fetch pages in parallel
 			curl_multi_exec($curlMultiHandle,$flag);
-			if ($flagLast != $flag)
-			{
-				echo curl_getinfo($curlMultiHandle);
-			}
 			} while ($flag > 0);			
 			
 		}
 
-		//set function-level variables
+		//set item
 		set_current_item($item);
 		
 		if ($DEBUG)
 		{
-		    $actionContexts = current_action_contexts();//for metadata
-		    echo '$actionContents: ';
-		    print_r($actionContexts);
 					
 			$successful = TRUE;//innocent until proven guilty
 
+			echo 'execSingleHandle: ';
 			execSingleHandle($successful, getMetadataCurlObject(TRUE));
+			
+			echo 'file_get_contents: ';
+			echo preg_replace('/\s/','', file_get_contents('http://archive.org/metadata/'.getBucketName()));
+			
+			//bucket must exist before subsequent requests are made
+			while(preg_replace('/\s/','', file_get_contents('http://archive.org/metadata/'.getBucketName())) == '{}')
+			{
+				usleep ( 1000 );
+			}
 
 			while(loop_files_for_item())
 			{
-				execSingleHandle($successful, getFileCurlObject(get_current_file(),FALSE));
+				execSingleHandle($successful, getFileCurlObject(FALSE,get_current_file()));
 			}
 
 			echo 'Very important: ';
@@ -287,7 +400,7 @@ function beam_post_to_ia($item)
 			$i = 1;
 			while(loop_files_for_item())
 			{
-				$curl[$i] = addHandle($successful,getFileCurlObject(get_current_file(),FALSE));
+				$curl[$i] = addHandle($successful,getFileCurlObject(TRUE,get_current_file()));
 			}		
 					
 			execMultiHandle($curlMultiHandle);
@@ -302,7 +415,7 @@ function beam_post_to_ia($item)
 		}
 				
 	}
-		
+
 }
 
 /**
@@ -345,6 +458,7 @@ function beam_form($item) {
 }
 
 //helpers
+
 /**
  * @return bucket name for Omeka Item
  */

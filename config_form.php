@@ -9,21 +9,33 @@
 		<br/>
 		<span><b>Upload to Internet Archive By Default</b></span>
 		<input type="checkbox" name="PostToInternetArchiveDefaultBool" id="PostToInternetArchiveDefaultBool" value="Yes" <?php if(get_option('post_to_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
-		<div>You can change this option on a per-item basis</div>
+		<div>You can change this option on a per-item basis.</div>
+		<br/>
+		<br/>
+		<span><b>Index at Internet Archive By Default</b></span>
+		<input type="checkbox" name="IndexAtInternetArchiveDefaultBool" id="IndexAtInternetArchiveDefaultBool" value="Yes" <?php if(get_option('index_at_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+		<div>If you index your items, they will appear on the results of search engines such as Google's.</div>
+		<div>You can change this option on a per-item basis.</div>
 		<br/>
 		<br/>
 		<div><b>S3 access key</b></div>
-		<input type="text" name="AWSAccessKeyId" id="AWSAccessKeyId" value=<?php echo get_option('secret_key') ?>>
+		<input type="text" name="AWSAccessKeyId" id="AWSAccessKeyId" size='35' value=<?php echo get_option('secret_key') ?>>
 		<br/>
 		<br/>
 		<div><b>S3 secret key</b></div>
-    	<input type="text" name="SecretKey" id="SecretKey" value=<?php echo get_option('access_key') ?>>    	
+    	<input type="text" name="SecretKey" id="SecretKey" size='35' value=<?php echo get_option('access_key') ?>>    	
 		<br/>
 		<br/>
-		<div><b>Bucket Prefix</b></div>
-		<div>The recommended default prefix almost guarantees a unique bucket name. If you would like to change it, use all lowercase and no spaces.</div>
-    	<input type="text" name="BucketPrefix" id="BucketPrefix" value=<?php echo get_option('bucket_prefix') ?>>    	
-    	
+		<div><b>Collection Name</b></div>
+		<input type="text" name="CollectionName" id="CollectionName" size='35' value=<?php echo get_option('collection_name') ?>>
+		<div>You must contact <a href= "mailto:info@archive.org" >info@archive.org</a> and get an Internet Archive Collection to use this plugin.</div>
+		<div>Do not fear. It is free and the Internet Archive is staffed exclusively with friendly and responsive people.</div>
+		<br/>
+		<br/>
+		<div><b>Media Type</b></div>
+		<input type="text" name="MediaType" id="MediaType" size='35' value=<?php echo get_option('media_type') ?>>
+		<div>Ask the Internet Archive what do put here. They will tell you what to enter here when you get your collection.</div>
+		<div>Again, they would love to hear from you so please contact them.</div>    	
 	</div>
 	
 </div>
