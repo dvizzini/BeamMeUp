@@ -40,22 +40,6 @@ function beam_admin_append_to_items_show_secondary() {
 }
 
 /**
- * admin_navigation_main filter.
- * 
- * @param array $nav Array of main navigation tabs.
- * @return array Filtered array of main navigation tabs.
- */
-/*
-function beam_harvester_admin_navigation_main($nav)
-{
-    if (has_permission('BeamMeUp_Index', 'index')) {
-        $nav['BeamMeUp'] = uri('beam_me_up');
-    }
-    return $nav;
-}
-*/
-
-/**
  * Gives user the option to post to the Internet Archive 
  * @return void
  **/    
@@ -266,7 +250,6 @@ function beam_after_save_item($item)
 			$cURL = getInitializedCurlObject($first,'Item Metadata');
 			$body = show_item_metadata($options = array('show_empty_elements' => TRUE), $item = $item);
 								
-			echo 'about to show_item_metadata: ';
 			echo $body;
 
 			/** use a max of 256KB of RAM before going to disk */
@@ -298,6 +281,8 @@ function beam_after_save_item($item)
 
 			// open this directory
 			set_current_file($fileToBePut);
+			echo item_file("Julia's Lullaby");
+			echo preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',"Julia's Lullaby"),ENT_QUOTES));
 			echo item_file('original filename');
 			echo preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',item_file('original filename')),ENT_QUOTES));
 			
@@ -366,11 +351,7 @@ function beam_after_save_item($item)
 					
 			$successful = TRUE;//innocent until proven guilty
 
-			echo 'execSingleHandle: ';
 			execSingleHandle($successful, getMetadataCurlObject(TRUE));
-			
-			echo 'file_get_contents: ';
-			echo preg_replace('/\s/','', file_get_contents('http://archive.org/metadata/'.getBucketName()));
 			
 			//bucket must exist before subsequent requests are made
 			while(preg_replace('/\s/','', file_get_contents('http://archive.org/metadata/'.getBucketName())) == '{}')
@@ -393,11 +374,17 @@ function beam_after_save_item($item)
 		else
 		{
 
+			curl_exec(getMetadataCurlObject(TRUE));
+			
+			while(preg_replace('/\s/','', file_get_contents('http://archive.org/metadata/'.getBucketName())) == '{}')
+			{
+				usleep ( 1000 );
+			}
+
+			//now that bucket has been created, run multi-threaded cURL
 			$curlMultiHandle = curl_multi_init();
 			
-			$curl[0] = addHandle($curlMultiHandle, getMetadataCurlObject(TRUE));
-			
-			$i = 1;
+			$i = 0;
 			while(loop_files_for_item())
 			{
 				$curl[$i] = addHandle($successful,getFileCurlObject(TRUE,get_current_file()));
