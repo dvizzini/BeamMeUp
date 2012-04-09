@@ -8,12 +8,14 @@
 		<h3>Be sure to log in with the account used for your archives.</h3>
 		<br/>
 		<span><b>Upload to Internet Archive By Default</b></span>
-		<input type="checkbox" name="PostToInternetArchiveDefaultBool" id="PostToInternetArchiveDefaultBool" value="Yes" <?php if(get_option('post_to_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+		<input type="hidden" name="PostToInternetArchiveDefaultBool" value="0">
+		<input type="checkbox" name="PostToInternetArchiveDefaultBool" id="PostToInternetArchiveDefaultBool" value="1" <?php if(get_option('post_to_internet_archive_default_bool') == '1') {echo 'checked';} ?>/>
 		<div>You can change this option on a per-item basis.</div>
 		<br/>
 		<br/>
 		<span><b>Index at Internet Archive By Default</b></span>
-		<input type="checkbox" name="IndexAtInternetArchiveDefaultBool" id="IndexAtInternetArchiveDefaultBool" value="Yes" <?php if(get_option('index_at_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+		<input type="hidden" name="IndexAtInternetArchiveDefaultBool" value="0">
+		<input type="checkbox" name="IndexAtInternetArchiveDefaultBool" id="IndexAtInternetArchiveDefaultBool" value="1" <?php if(get_option('index_at_internet_archive_default_bool') == '1') {echo 'checked';} ?>>
 		<div>If you index your items, they will appear on the results of search engines such as Google's.</div>
 		<div>You can change this option on a per-item basis.</div>
 		<br/>

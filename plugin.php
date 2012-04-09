@@ -19,12 +19,12 @@ add_plugin_hook('admin_append_to_items_show_secondary', 'beam_admin_append_to_it
 add_plugin_hook('admin_theme_header', 'beam_admin_theme_header');
 
 /** Plugin filters */
-add_filter('admin_items_form_tabs', 'beam_item_form_tabs');
+add_filter('admin_items_form_tabs', 'beam_admin_item_form_tabs');
 
 // Hook Functions
 
 function beam_admin_theme_header() {
-	
+	//@TODO: Put jQuery here
 }
 
 /**
@@ -48,14 +48,17 @@ function beam_admin_append_to_items_form_files() {
 	?>
 
 	<span><b>Upload to Internet Archive</b></span>
-	<input type="checkbox" name="PostToInternetArchiveBool" value="Yes" <?php if(get_option('post_to_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+	<input type="hidden" name="PostToInternetArchiveBool" value="0">
+	<input type="checkbox" name="PostToInternetArchiveBool" value="1" <?php if(get_option('post_to_internet_archive_default_bool') == '1') {echo 'checked';} ?>/>
 	<div><em>Note that if this box is checked, saving the item may take a while.</em></div>
 	<div><em>Files must be uniquely named to post to the archive.</em></div>
 	</br>
-	</br>
 	<span><b>Index at Internet Archive</b></span>
-	<input type="checkbox" name="IndexAtInternetArchiveBool" value="Yes" <?php if(get_option('index_at_internet_archive_default_bool') == 'Yes') {echo 'checked';} ?>/>
+	<input type="hidden" name="IndexAtInternetArchiveBool" value="0">
+	<input type="checkbox" name="IndexAtInternetArchiveBool" value="1" <?php if(get_option('index_at_internet_archive_default_bool') == '1') {echo 'checked';} ?>/>
 	<div><em>If you index your item, it will appear on the results of search engines such as Google's.</em></div>
+	</br>
+	</br>
 
 	<?php
 }
@@ -67,8 +70,8 @@ function beam_admin_append_to_items_form_files() {
 function beam_install()
 {
 	
-	set_option('post_to_internet_archive_default_bool', 'Yes');
-	set_option('index_at_internet_archive_default_bool', 'Yes');
+	set_option('post_to_internet_archive_default_bool', '1');
+	set_option('index_at_internet_archive_default_bool', '1');
 	set_option('access_key', 'Enter&nbsp;S3&nbsp;access&nbsp;key&nbsp;here.');
 	set_option('secret_key', 'Enter&nbsp;S3&nbsp;secret&nbsp;key&nbsp;here.');
 	set_option('collection_name', 'Please&nbsp;contact&nbsp;the&nbsp;Internet&nbsp;Archive.');
@@ -137,7 +140,7 @@ function beam_config()
  * Add BeamMeUp tab to the edit item page
  * @return array
  **/
-function beam_item_form_tabs($tabs)
+function beam_admin_item_form_tabs($tabs)
 {
     // insert the map tab before the Miscellaneous tab
     $item = get_current_item();
@@ -164,7 +167,7 @@ function beam_after_save_item($item)
 	//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
 	$DEBUG = TRUE;
 
-	if($_POST["PostToInternetArchiveBool"] == 'Yes') {
+	if($_POST["PostToInternetArchiveBool"] == '1') {
 				
 				
 		function getInitializedCurlObject($first,$title)
@@ -181,25 +184,25 @@ function beam_after_save_item($item)
 			curl_setopt($cURL, CURLOPT_RETURNTRANSFER, TRUE);				
 	
 			//note that curl_setopt does not seem to work with predefined arrays, which is a real deterent to good code
-			//TODO: test with predefined arrays
 			if ($first) {
 				curl_setopt($cURL, CURLOPT_HTTPHEADER, 
 					array('x-amz-auto-make-bucket:1',
 						//TODO: which works?
 						'x-archive-metadata-collection:'.get_option('collection_name'),
-						'x-archive-meta-noindex:'.get_option('collection_name'),
+						'x-archive-meta-collection:'.get_option('collection_name'),
 						'x-archive-meta-mediatype:'.get_option('media_type'),
 						'x-archive-meta-title:'.$title,
-						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == 'Yes') ? '0' : '1'),
+						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == '1') ? '0' : '1'),
 						'x-archive-meta-creator:'.preg_replace('/www/', '', $_SERVER["SERVER_NAME"],1),
 						'authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
 			} else {
 				curl_setopt($cURL, CURLOPT_HTTPHEADER, array(
 						//TODO: which works?
+						'x-archive-metadata-collection:'.get_option('collection_name'),
 						'x-archive-meta-collection:'.get_option('collection_name'),
 						'x-archive-meta-mediatype:'.get_option('media_type'),
 						'x-archive-meta-title:'.$title,
-						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == 'Yes') ? '0' : '1'),
+						'x-archive-meta-noindex:'.(($_POST["IndexAtInternetArchiveBool"] == '1') ? '0' : '1'),
 						'x-archive-meta-creator:'.preg_replace('/www/', '', $_SERVER["SERVER_NAME"],1),
 						'authorization: LOW '.get_option('access_key').':'.get_option('secret_key')));
 			}
@@ -281,7 +284,7 @@ function beam_after_save_item($item)
 
 			// open this directory
 			set_current_file($fileToBePut);
-			echo item_file("Julia's Lullaby");
+			echo "Julia's Lullaby";
 			echo preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',"Julia's Lullaby"),ENT_QUOTES));
 			echo item_file('original filename');
 			echo preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',item_file('original filename')),ENT_QUOTES));
