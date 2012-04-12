@@ -165,7 +165,7 @@ function beam_after_save_item($item)
 {
 	
 	//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
-	$DEBUG = TRUE;
+	$DEBUG = FALSE;
 
 	if($_POST["PostToInternetArchiveBool"] == '1') {
 				
@@ -302,7 +302,7 @@ function beam_after_save_item($item)
 		 * Adds handle for to cURL multi object 
 		 * @param $curlMultiHandle pointer to multi cURL multi handle that will be added to
 		 * @param $cURL single cURL handle to add 
-		 * @return the $cURL object for curl_multi_remove_handle
+		 * @return $curl the object for curl_multi_remove_handle
 		 **/    		
 		function addHandle(&$curlMultiHandle,$cURL)
 		{
@@ -390,7 +390,7 @@ function beam_after_save_item($item)
 			$i = 0;
 			while(loop_files_for_item())
 			{
-				$curl[$i] = addHandle($successful,getFileCurlObject(TRUE,get_current_file()));
+				$curl[$i] = addHandle($curlMultiHandle,getFileCurlObject(TRUE,get_current_file()));
 			}		
 					
 			execMultiHandle($curlMultiHandle);
