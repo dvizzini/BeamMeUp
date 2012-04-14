@@ -4,7 +4,6 @@ define('BEAMMEUP_PLUGIN_VERSION', '0.1');
 #@TODO: Add MVC implementation
 #@TODO: Check out array-to-XML parsers
 #@TODO: Check OAIPMH harverster plugin for code that loads status to db , see indexcontroller.php #jobdispatcher to get onto other thread 
-#@TODO: Look at paths.php for better way to get file path
 #@TODO: make jQuery in config_form.php work 
 #@TODO: bind jQuery to "Add Item" and "Save Changes" buttons to confirm upload 
 	
@@ -291,7 +290,7 @@ function beam_after_save_item($item)
 			
 			//TODO Test with hyphen, apostraphe
 			curl_setopt($cURL, CURLOPT_URL, 'http://s3.us.archive.org/'.getBucketName().'/'.preg_replace('/&#\d+;/','_',htmlspecialchars(preg_replace('/\s/','_',item_file('original filename')),ENT_QUOTES)));
-			curl_setopt($cURL, CURLOPT_INFILE,  fopen('./../archive/files/'.item_file('archive filename'),'r'));
+			curl_setopt($cURL, CURLOPT_INFILE,  fopen(FILES_DIR.item_file('archive filename'),'r'));
 			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
 
 			return $cURL;
