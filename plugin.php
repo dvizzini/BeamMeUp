@@ -23,7 +23,7 @@ add_filter('admin_items_form_tabs', 'beam_admin_item_form_tabs');
 // Hook Functions
 
 function beam_admin_theme_header() {
-	//@TODO: Put jQuery here
+	//@TODO: Insert jQuery here
 }
 
 /**
@@ -43,7 +43,6 @@ function beam_admin_append_to_items_show_secondary() {
  * @return void
  **/    
 function beam_admin_append_to_items_form_files() {
-
 	?>
 
 	<span><b>Upload to Internet Archive</b></span>
@@ -107,7 +106,6 @@ function beam_uninstall()
 	delete_option('access_key');
 	delete_option('secret_key');
 	delete_option('bucket_prefix');
-	
 }
 /**
  * Displays configuration form 
@@ -124,14 +122,12 @@ function beam_config_form()
  **/    
 function beam_config()
 {
-
 	set_option('post_to_internet_archive_default_bool', $_POST['PostToInternetArchiveDefaultBool']);
 	set_option('index_at_internet_archive_default_bool', $_POST['IndexAtInternetArchiveDefaultBool']);
 	set_option('collection_name', $_POST['CollectionName']);
 	set_option('media_type', $_POST['MediaType']);
 	set_option('access_key', $_POST['AWSAccessKeyId']);
 	set_option('secret_key', $_POST['SecretKey']);
-	
 }
 
 /**
@@ -161,12 +157,10 @@ function beam_admin_item_form_tabs($tabs)
  **/    
 function beam_after_save_item($item)
 {
-	
 	//runs single-thread and throws uncaught exception so echo and print_r statements are seen 
 	$DEBUG = FALSE;
 
 	if($_POST["PostToInternetArchiveBool"] == '1') {
-				
 				
 		function getInitializedCurlObject($first,$title)
 		{
@@ -206,7 +200,6 @@ function beam_after_save_item($item)
 			}
 			
 			return $cURL;
-			
 		}
 
 		/**
@@ -267,7 +260,6 @@ function beam_after_save_item($item)
 			curl_setopt($cURL, CURLOPT_INFILESIZE, strlen($body)); 
 
 			return $cURL;
-			
 		}
 		
 		/**
@@ -293,7 +285,6 @@ function beam_after_save_item($item)
 			curl_setopt($cURL, CURLOPT_INFILESIZE, item_file('Size'));
 
 			return $cURL;
-			
 		}
 		
 		/**
@@ -304,10 +295,8 @@ function beam_after_save_item($item)
 		 **/    		
 		function addHandle(&$curlMultiHandle,$cURL)
 		{
-
 			curl_multi_add_handle($curlMultiHandle,$cURL);
 			return $cURL;
-
 		}
 				
 		/**
@@ -318,7 +307,6 @@ function beam_after_save_item($item)
 		 **/    		
 		function execSingleHandle(&$successful,$cURL)
 		{
-			
 			curl_exec($cURL);
 			
 			if (curl_getinfo($cURL,CURLINFO_HTTP_CODE) != 200)
@@ -327,7 +315,6 @@ function beam_after_save_item($item)
 			}
 
 			print_r(curl_getinfo($cURL));
-
 		}
 
 		/**
@@ -341,7 +328,6 @@ function beam_after_save_item($item)
 			//fetch pages in parallel
 			curl_multi_exec($curlMultiHandle,$flag);
 			} while ($flag > 0);			
-			
 		}
 
 		//set item
@@ -370,7 +356,6 @@ function beam_after_save_item($item)
 
 			//throws uncaught error for debugging
 			file_download_uri($whatever);
-
 		}
 		else
 		{
@@ -399,11 +384,8 @@ function beam_after_save_item($item)
 			}
 			
 			curl_multi_close($curlMultiHandle);
-			
-		}
-				
+		}		
 	}
-
 }
 
 /**
@@ -442,7 +424,6 @@ function beam_form($item) {
     ob_end_clean();
 
     return $ht;
-	
 }
 
 //helpers
