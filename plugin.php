@@ -80,18 +80,17 @@ function beam_install()
 	$bucketPrefix = 'omeka'.((strpos($bucketPrefix,'_') == 0) ? '' : '_').$bucketPrefix;
 	set_option('bucket_prefix', $bucketPrefix);
 
-/*
     $db = get_db();
     $sql = "
-    CREATE TABLE IF NOT EXISTS $db->CC (
-    `item_id` BIGINT UNSIGNED NOT NULL ,
-    `up_to_date` BOOLEAN NOT NULL ,
-    `bucket_url` TEXT ,
-    `bucket_history_url` TEXT ,
-    INDEX (`item_id`)) ENGINE = MYISAM";
+    CREATE TABLE IF NOT EXISTS `$db->InternetArchiveFile` (
+		`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+	    `item_id` BIGINT UNSIGNED NOT NULL,
+	    `up_to_date` BOOLEAN NOT NULL,
+	    `bucket_url` TEXT,
+	    `bucket_history_url` TEXT,
+	    INDEX (`item_id`)
+   ) ENGINE=MyISAM  DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci";
     $db->query($sql);
-*/
-
 }
 
 /**
