@@ -37,7 +37,10 @@
 		<div><b>Media Type</b></div>
 		<input type="text" name="MediaType" id="MediaType" size='35' value=<?php echo get_option('media_type') ?>>
 		<div>Ask the Internet Archive what do put here. They will tell you what to enter here when you get your collection.</div>
-		<div>Again, they would love to hear from you so please contact them.</div>    	
+		<div>Again, they would love to hear from you so please contact them.</div>  
+		<h2><?php echo __('Output Formats'); ?></h2>
+	   <?php echo output_format_list(false, ' · '); ?>
+  	
 	</div>
 	
 </div>
