@@ -1,3 +1,30 @@
+<script type="text/javascript">
+    jQuery(document).ready(function() {
+
+		$("#AWSAccessKeyId").Watermark("Enter&nbsp;S3&nbsp;access&nbsp;key&nbsp;here.");
+		$("#SecretKey").Watermark("Enter&nbsp;S3&nbsp;secret&nbsp;key&nbsp;here.");
+	    
+	    jQuery("form").bind("submit", function(event) {
+
+			//cannot use .children() because form has no name or id
+            if (jQuery('input[name=AWSAccessKeyId]').val().indexOf(" ") != -1 || jQuery('input[name=AWSAccessKeyId]').val() == "") {
+				alert('Please enter valid secret key.');
+            }
+            if (jQuery('input[name=SecretKey]').val().indexOf(" ") != -1 || jQuery('input[name=SecretKey]').val() == "") {
+				alert('Please enter valid access key.');
+            }
+            if (jQuery('input[name=BucketPrefix]').val().indexOf(" ") != -1 || jQuery('input[name=BucketPrefix]').val() == "") {
+				alert('Please enter valid bucket prefix.');
+            } else {
+            	jQuery('input[name=BucketPrefix]').val(jQuery('input[name=BucketPrefix]').val().toLowerCase()));
+            }
+            
+            return false;
+            
+	    });
+    });
+</script>
+
 <div class="field">
 
 	<div class="inputs">
@@ -44,30 +71,3 @@
 	</div>
 	
 </div>
-
-<script type="text/javascript">
-    jQuery(document).ready(function() {
-
-		$("#AWSAccessKeyId").Watermark("Enter&nbsp;S3&nbsp;access&nbsp;key&nbsp;here.");
-		$("#SecretKey").Watermark("Enter&nbsp;S3&nbsp;secret&nbsp;key&nbsp;here.");
-	    
-	    jQuery("form").bind("submit", function(event) {
-
-			//cannot use .children() because form has no name or id
-            if (jQuery('input[name=AWSAccessKeyId]').val().indexOf(" ") != -1 || jQuery('input[name=AWSAccessKeyId]').val() == "") {
-				alert('Please enter valid secret key.');
-            }
-            if (jQuery('input[name=SecretKey]').val().indexOf(" ") != -1 || jQuery('input[name=SecretKey]').val() == "") {
-				alert('Please enter valid access key.');
-            }
-            if (jQuery('input[name=BucketPrefix]').val().indexOf(" ") != -1 || jQuery('input[name=BucketPrefix]').val() == "") {
-				alert('Please enter valid bucket prefix.');
-            } else {
-            	jQuery('input[name=BucketPrefix]').val(jQuery('input[name=BucketPrefix]').val().toLowerCase()));
-            }
-            
-            return false;
-            
-	    });
-    });
-</script>
